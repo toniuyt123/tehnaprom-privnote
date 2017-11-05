@@ -13,6 +13,8 @@ class NotesController < ApplicationController
 	@note = Note.find_by slug: params[:slug]
 	if @note.nil?
 		render "note deleted"
+	else
+		@note.destroy
 	end
   end
 
@@ -28,14 +30,22 @@ class NotesController < ApplicationController
   # POST /notes
   # POST /notes.json
   def create
-    @note = Note.new(note_params)
-
-      if @note.save
-		redirect_to notes_url + "/" + @note.slug + "/info"
-      else
-		@errors = @note.errors
-		render 'new'
-      end
+	if request.content_type =~ /json/
+		note = Note.create(note_apiparams)
+		render json: {url: notes_url + "/" + note.slug}
+	elsif request.content_type =~ /xml/
+		params[:message] = Hash.from_xml(request.body.read)["message"]
+		note = Note.create(note_apiparams)
+		render xml:'<url>' + notes_url + "/" + note.slug + '</url>'
+	elsif request.content_type =~ /form/
+		@note = Note.new(note_params)
+		if @note.save
+			redirect_to notes_url + "/" + @note.slug + "/info"
+		else
+			@errors = @note.errors
+			render 'new'
+		end
+	end
   end
 
   def info
@@ -67,13 +77,17 @@ class NotesController < ApplicationController
 
 
   private
-    # Use callbacks to share common setup or constraints between actions.
-    def set_note
-      @note = Note.find_by(params[:slug])
-    end
+	# Use callbacks to share common setup or constraints between actions.
+	def set_note
+		@note = Note.find_by slug: params[:slug]
+	end
 
-    # Never trust parameters from the scary internet, only allow the white list through.
-    def note_params
-      params.require(:note).permit(:content)
-    end
+	# Never trust parameters from the scary internet, only allow the white list through.
+	def note_params
+		params.require(:note).permit(:content, :message)
+	end
+
+	def note_apiparams
+		params.permit(:content, :message)
+	end
 end

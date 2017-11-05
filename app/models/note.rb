@@ -1,4 +1,5 @@
 class Note < ApplicationRecord
+	alias_attribute :message, :content
 	before_create :generate_slug
 
 	private
